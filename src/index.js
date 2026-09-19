@@ -79,11 +79,27 @@ async function handleHeat(row) {
 }
 
 let firstTick = true;
+let lastBeat = 0;
 
 async function tick() {
   const date = config.date === "today" || !config.date ? todayLocal() : config.date;
   const schedule = await getSchedule(date);
-  const heats = schedule.filter((r) => isRaceHeat(r) && isFinished(r));
+  const allHeats = schedule.filter((r) => isRaceHeat(r));
+  const heats = allHeats.filter((r) => isFinished(r));
+
+  // Battement de coeur : confirme que la lecture du calendrier fonctionne,
+  // sans noyer le log (une ligne toutes les HEARTBEAT_SECONDS).
+  if (config.heartbeatSeconds > 0 && !firstTick) {
+    const now = Date.now();
+    if (now - lastBeat >= config.heartbeatSeconds * 1000) {
+      lastBeat = now;
+      const inProgress = allHeats.filter((r) => !isFinished(r)).length;
+      log(
+        `[veille] lecture OK — ${allHeats.length} course(s), ${heats.length} terminee(s), ` +
+          `${inProgress} a venir/en cours. En attente des prochaines fins.`,
+      );
+    }
+  }
 
   // Au demarrage : les courses DEJA terminees sont du backlog. On les memorise
   // sans les imprimer, pour n'imprimer ensuite QUE celles qui viennent de finir

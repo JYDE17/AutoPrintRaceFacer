@@ -60,6 +60,8 @@ export const config = {
   // Au demarrage, imprimer aussi les courses deja terminees (backlog) ?
   // false (defaut) = n'imprime que les heats qui finissent pendant le run.
   printBacklogOnStart: bool(env.PRINT_BACKLOG_ON_START, false),
+  // Intervalle du message "veille OK" dans les logs (secondes). 0 = desactive.
+  heartbeatSeconds: num(env.HEARTBEAT_SECONDS, 300),
 
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),
