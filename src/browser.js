@@ -44,6 +44,7 @@ async function getBrowser() {
 }
 
 export async function closeBrowser() {
+  apiPage = null;
   if (browserPromise) {
     try {
       const b = await browserPromise;
@@ -152,14 +153,34 @@ async function withAuth(fn) {
   }
 }
 
-// Fetch d'un JSON RaceFacer DANS le contexte authentifie du navigateur.
+// Page persistante placee SUR le domaine RaceFacer, pour que les fetch soient
+// same-origin (sinon "Failed to fetch" depuis about:blank + cookies non envoyes).
+let apiPage = null;
+
+async function getApiPage() {
+  const browser = await getBrowser();
+  if (!apiPage || apiPage.isClosed()) {
+    apiPage = await browser.newPage();
+  }
+  const u = apiPage.url();
+  const onOrigin = u.startsWith(config.baseUrl) && !isLoginUrl(u);
+  if (!onOrigin) {
+    await apiPage.goto(`${config.baseUrl}/fr/administration/sessions/session-management`, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
+    });
+    if (isLoginUrl(apiPage.url())) throw new NotLoggedIn();
+  }
+  return apiPage;
+}
+
+// Fetch d'un JSON RaceFacer DANS le contexte authentifie same-origin.
 export async function fetchJson(pathAndQuery) {
   const url = `${config.baseUrl}${pathAndQuery}`;
   return withAuth(async () => {
-    const browser = await getBrowser();
-    const page = await browser.newPage();
-    try {
-      const result = await page.evaluate(async (u) => {
+    const page = await getApiPage();
+    const result = await page.evaluate(async (u) => {
+      try {
         const r = await fetch(u, {
           headers: {
             Accept: "application/json, text/plain, */*",
@@ -168,17 +189,18 @@ export async function fetchJson(pathAndQuery) {
           credentials: "include",
         });
         const text = await r.text();
-        return { status: r.status, url: r.url, ct: r.headers.get("content-type") || "", text };
-      }, url);
-
-      if (isLoginUrl(result.url) || result.status === 401 || result.status === 403) {
-        throw new NotLoggedIn();
+        return { ok: true, status: r.status, url: r.url, ct: r.headers.get("content-type") || "", text };
+      } catch (e) {
+        return { ok: false, error: String(e && e.message ? e.message : e) };
       }
-      if (!result.ct.includes("json")) throw new NotLoggedIn();
-      return JSON.parse(result.text);
-    } finally {
-      await page.close().catch(() => {});
+    }, url);
+
+    if (!result.ok) throw new Error(`fetch KO (${result.error})`);
+    if (isLoginUrl(result.url) || result.status === 401 || result.status === 403) {
+      throw new NotLoggedIn();
     }
+    if (!result.ct.includes("json")) throw new NotLoggedIn();
+    return JSON.parse(result.text);
   });
 }
 
