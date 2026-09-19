@@ -9,22 +9,33 @@ import { findChrome } from "./chrome.js";
 
 let browserPromise = null;
 
-function launch(headless) {
+async function launch(headless) {
   const executablePath = findChrome();
-  return puppeteer.launch({
-    executablePath,
-    headless,
-    userDataDir: config.profileDir,
-    defaultViewport: headless ? { width: 1280, height: 1600 } : null,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-default-browser-check",
-    ].concat(headless ? [] : ["--start-maximized"]),
-  });
+  try {
+    return await puppeteer.launch({
+      executablePath,
+      headless,
+      userDataDir: config.profileDir,
+      defaultViewport: headless ? { width: 1280, height: 1600 } : null,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-default-browser-check",
+      ].concat(headless ? [] : ["--start-maximized"]),
+    });
+  } catch (e) {
+    // Profil deja ouvert par une autre instance (ex. le service tourne).
+    if (/ProcessSingleton|profile appears to be in use|SingletonLock|being used/i.test(e.message)) {
+      throw new Error(
+        "Le profil Chrome est deja utilise par une autre instance (le service tourne " +
+          "probablement). Arrete-le d'abord :  npm run service:stop  (puis relance apres le test).",
+      );
+    }
+    throw e;
+  }
 }
 
 async function getBrowser() {
