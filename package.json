@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "once": "node src/index.js --once",
+    "login": "node src/login.js",
     "discover": "node src/discover.js",
     "test-print": "node src/test-print.js"
   },

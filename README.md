@@ -37,7 +37,7 @@ ou par stage — voir config.)
 3. Pour chacune, il récupère le détail (`session?type=race_heat&uuid=...`) et
    vérifie que les résultats sont confirmés.
 4. Il ouvre la **page d'impression RaceFacer** (`RF_PRINT_URL`) dans Chromium
-   headless (authentifié par le cookie), la rend en PDF, puis l'envoie à
+   headless (session authentifiée du profil), la rend en PDF, puis l'envoie à
    l'imprimante.
 5. Chaque heat n'est imprimée **qu'une seule fois** (mémorisé dans
    `state/printed.json`).
@@ -57,35 +57,35 @@ cp .env.example .env      # puis remplis .env (voir ci-dessous)
 
 ## Configuration (`.env`)
 
-Les 3 valeurs indispensables :
+Les valeurs indispensables :
 
 | Variable | Rôle |
 |---|---|
-| `RF_COOKIE` | Cookie de session admin RaceFacer (auth des endpoints + page d'impression) |
-| `RF_PRINT_URL` | URL de la feuille de résultats à imprimer, avec `{uuid}` |
+| `RF_USERNAME` / `RF_PASSWORD` | Identifiants RaceFacer — le service se connecte tout seul et se reconnecte si la session expire |
+| `RF_PRINT_URL` | URL de la feuille de résultats à imprimer (déjà pré-remplie) |
 | `RF_SUB_TRACK_ID` | La piste à surveiller (défaut `1`) |
 
-Toutes les autres options (filtres, imprimante, intervalle...) sont documentées
-dans `.env.example`.
+Toutes les autres options (filtres, imprimante, réglages d'impression...) sont
+documentées dans `.env.example`.
 
-### Trouver `RF_PRINT_URL` et `RF_COOKIE` (script d'aide)
+### Authentification
 
-Tu ne connais pas l'URL de la feuille ? Lance :
+Le service ne copie **aucun cookie** : il se connecte à RaceFacer avec
+`RF_USERNAME` / `RF_PASSWORD` (comme le repo lasertag) et garde la session dans
+un profil Chrome persistant (`.chrome-profile/`). Si la session expire, il se
+reconnecte automatiquement.
 
-```bash
-npm run discover
-```
+- **Automatique (recommandé)** : renseigne `RF_USERNAME` et `RF_PASSWORD`.
+- **Manuel (fallback, ex. 2FA)** : laisse-les vides et lance `npm run login`
+  une fois — un navigateur s'ouvre, tu te connectes, tu fermes. La session est
+  gardée dans le profil.
 
-Un navigateur **visible** s'ouvre sur RaceFacer :
+### Trouver `RF_PRINT_URL` (déjà fait pour cette instance)
 
-1. Connecte-toi.
-2. Ouvre une course terminée et clique le bouton **Imprimer** une fois.
-3. Dans le terminal, repère la ligne marquée `<<< PROBABLE PAGE D'IMPRESSION`.
-   Remplace l'`uuid` par `{uuid}` et colle-la dans `RF_PRINT_URL`.
-4. Ferme le navigateur : le **cookie** s'affiche → colle-le dans `RF_COOKIE`.
-
-> Le cookie expire de temps en temps. Quand l'impression renvoie une erreur
-> d'auth (401/403), refais un `npm run discover` pour le regénérer.
+L'URL est déjà pré-remplie dans `.env.example`. Pour une autre instance,
+`npm run discover` ouvre un navigateur : clique **Imprimer** une fois sur une
+course, repère la ligne `<<< PROBABLE PAGE D'IMPRESSION`, remplace l'id par
+`{id}` (et l'uuid de course par `{race_uuid}`).
 
 ---
 
@@ -138,11 +138,12 @@ nssm start AutoPrintRaceFacer
 ```
 src/
   index.js       Boucle principale (poll + impression, anti-doublon)
-  racefacer.js   Client fetch RaceFacer (schedule, détail heat, URL d'impression)
-  browser.js     Chromium headless : page d'impression -> PDF
+  racefacer.js   Client RaceFacer (schedule, détail heat, URL d'impression)
+  browser.js     Chromium persistant : auto-login, fetch JSON, page d'impression -> PDF
   printer.js     Envoi du PDF à l'imprimante (Windows / CUPS / custom)
   chrome.js      Détection de l'exécutable Chrome/Chromium/Edge
   store.js       Mémoire des heats déjà imprimées
-  discover.js    Aide à trouver RF_PRINT_URL et RF_COOKIE
+  login.js       Connexion manuelle (fallback / 2FA)
+  discover.js    Aide à trouver RF_PRINT_URL
   test-print.js  Impression manuelle d'une course
 ```

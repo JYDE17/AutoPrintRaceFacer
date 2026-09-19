@@ -43,6 +43,11 @@ export const config = {
   subTrackId: str(env.RF_SUB_TRACK_ID, "1"),
   cookie: str(env.RF_COOKIE, ""),
   printUrl: str(env.RF_PRINT_URL, ""),
+  // Identifiants RaceFacer pour l'auto-login (comme le repo lasertag).
+  username: str(env.RF_USERNAME, ""),
+  password: str(env.RF_PASSWORD, ""),
+  // Profil Chrome persistant ou la session RaceFacer est conservee.
+  profileDir: resolveMaybe(str(env.CHROME_PROFILE_DIR, "./.chrome-profile")),
 
   // Filtre des courses a imprimer.
   raceLabelMatch: str(env.RF_RACE_LABEL_MATCH, ""),
@@ -74,12 +79,7 @@ export const config = {
 export function validateConfig({ needPrintUrl = true } = {}) {
   const problems = [];
   if (!config.baseUrl) problems.push("RF_BASE_URL est vide.");
-  if (!config.cookie) {
-    problems.push(
-      "RF_COOKIE est vide : les endpoints /ajax et la page d'impression exigent le cookie " +
-        "de session admin. Voir .env.example (ou lance `npm run discover`).",
-    );
-  }
+  // L'auth se fait via le profil Chrome (npm run login), pas via un cookie.
   if (needPrintUrl && !config.printUrl) {
     problems.push(
       "RF_PRINT_URL est vide : c'est l'URL de la feuille de resultats RaceFacer a imprimer. " +

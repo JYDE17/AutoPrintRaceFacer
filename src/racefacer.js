@@ -1,41 +1,12 @@
-// Client RaceFacer : reprend le meme mecanisme de "fetch avec auth" que le
-// repo Goplex-Lasertag (un wrapper api() unique + headers), mais cote serveur
-// et sur les endpoints /ajax/session-management/... de RaceFacer.
+// Client RaceFacer : meme idee que le repo Goplex-Lasertag (un fetch authentifie
+// unique), mais l'auth passe par le profil Chrome persistant. Les JSON sont donc
+// recuperes DANS le contexte du navigateur connecte (voir browser.fetchJson).
 import { config } from "./config.js";
+import { fetchJson } from "./browser.js";
 
-// Headers repris du HAR d'une requete ajax reelle de la console RaceFacer.
-function baseHeaders() {
-  return {
-    Accept: "application/json, text/plain, */*",
-    "X-Requested-With": "XMLHttpRequest",
-    Referer: `${config.baseUrl}/fr/administration/sessions/session-management`,
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
-    Cookie: config.cookie,
-  };
-}
-
-// Wrapper fetch unique (equivalent de api() dans l'autre repo).
-async function api(pathAndQuery, opts = {}) {
-  const url = `${config.baseUrl}${pathAndQuery}`;
-  let res;
-  try {
-    res = await fetch(url, { ...opts, headers: { ...baseHeaders(), ...(opts.headers || {}) } });
-  } catch (e) {
-    throw new Error(`Reseau KO sur ${pathAndQuery}: ${e.message}`);
-  }
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      `Auth refusee (${res.status}) sur ${pathAndQuery}. Le cookie RF_COOKIE est probablement expire.`,
-    );
-  }
-  if (!res.ok) throw new Error(`HTTP ${res.status} sur ${pathAndQuery}`);
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("json")) {
-    // Une page HTML de login = session perdue.
-    throw new Error(`Reponse non-JSON sur ${pathAndQuery} (cookie expire ?)`);
-  }
-  return res.json();
+// Wrapper unique (equivalent de api() dans l'autre repo).
+async function api(pathAndQuery) {
+  return fetchJson(pathAndQuery);
 }
 
 // Date locale au format YYYY-MM-DD.
