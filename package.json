@@ -9,7 +9,11 @@
     "once": "node src/index.js --once",
     "login": "node src/login.js",
     "discover": "node src/discover.js",
-    "test-print": "node src/test-print.js"
+    "test-print": "node src/test-print.js",
+    "service:install": "powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1",
+    "service:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-task.ps1",
+    "service:start": "powershell -Command \"Start-ScheduledTask -TaskName AutoPrintRaceFacer\"",
+    "service:stop": "powershell -Command \"Stop-ScheduledTask -TaskName AutoPrintRaceFacer\""
   },
   "engines": {
     "node": ">=18"

@@ -3,5 +3,6 @@ node_modules/
 output/
 state/
 .chrome-profile/
+logs/
 *.log
 .DS_Store

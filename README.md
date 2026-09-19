@@ -116,18 +116,40 @@ npm run test-print -- <uuid-du-heat>   # imprime une course précise, tout de su
 
 ---
 
-## Démarrage automatique (borne)
+## Démarrage automatique (borne) — sans rien lancer le matin
 
-**Windows** — le plus simple, en tant que service via
-[nssm](https://nssm.cc/) :
+**Windows (recommandé)** — installe le service en **une commande** (à faire une
+seule fois). Il démarrera tout seul à chaque ouverture de session, tournera en
+**arrière-plan sans aucune fenêtre**, et se **relancera automatiquement** s'il
+s'arrête :
 
+```powershell
+npm run service:install
 ```
-nssm install AutoPrintRaceFacer "C:\Program Files\nodejs\node.exe" "C:\chemin\AutoPrintRaceFacer\src\index.js"
-nssm set AutoPrintRaceFacer AppDirectory "C:\chemin\AutoPrintRaceFacer"
-nssm start AutoPrintRaceFacer
+
+Puis pour le lancer tout de suite (sans redémarrer) :
+
+```powershell
+npm run service:start
 ```
 
-(ou une tâche planifiée « au démarrage de session ».)
+Autres commandes :
+
+```powershell
+npm run service:stop        # arreter
+npm run service:uninstall   # desinstaller la tache
+```
+
+> La tâche s'exécute **sous ta session utilisateur** (pour voir l'imprimante par
+> défaut). Si la borne démarre directement sur le bureau (connexion Windows
+> automatique), le service se lance donc au boot. Sinon il démarre à l'ouverture
+> de session.
+>
+> Logs en direct : `logs\service.log`.
+
+**Alternative** — [nssm](https://nssm.cc/) pour un vrai service Windows
+(nécessite alors une imprimante nommée dans `PRINTER_NAME`, car un service
+système ne voit pas l'imprimante par défaut de l'utilisateur).
 
 **Linux** — un service `systemd` qui lance `npm start` dans le dossier du projet.
 
