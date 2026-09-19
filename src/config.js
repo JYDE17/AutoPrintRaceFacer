@@ -57,6 +57,9 @@ export const config = {
   // Boucle.
   pollIntervalSeconds: num(env.POLL_INTERVAL_SECONDS, 20),
   date: str(env.RF_DATE, "today"),
+  // Au demarrage, imprimer aussi les courses deja terminees (backlog) ?
+  // false (defaut) = n'imprime que les heats qui finissent pendant le run.
+  printBacklogOnStart: bool(env.PRINT_BACKLOG_ON_START, false),
 
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),

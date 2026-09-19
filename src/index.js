@@ -78,10 +78,33 @@ async function handleHeat(row) {
   log(`[ok] ${res.printed ? `imprime (${res.mode})` : "PDF genere (mode none)"} : ${outPath}`);
 }
 
+let firstTick = true;
+
 async function tick() {
   const date = config.date === "today" || !config.date ? todayLocal() : config.date;
   const schedule = await getSchedule(date);
   const heats = schedule.filter((r) => isRaceHeat(r) && isFinished(r));
+
+  // Au demarrage : les courses DEJA terminees sont du backlog. On les memorise
+  // sans les imprimer, pour n'imprimer ensuite QUE celles qui viennent de finir
+  // pendant que le service tourne. (Desactivable avec PRINT_BACKLOG_ON_START=true.)
+  if (firstTick && !config.printBacklogOnStart) {
+    firstTick = false;
+    let seeded = 0;
+    for (const row of heats) {
+      if (row.uuid && !alreadyPrinted(row.uuid)) {
+        markPrinted(row.uuid, { skipped: "backlog-demarrage", label: row.label });
+        seeded++;
+      }
+    }
+    log(
+      `Demarrage : ${heats.length} course(s) deja terminee(s) memorisee(s) sans impression ` +
+        `(${seeded} nouvelle(s)). J'imprimerai les prochaines des qu'elles finiront.`,
+    );
+    return;
+  }
+  firstTick = false;
+
   for (const row of heats) {
     try {
       await handleHeat(row);
