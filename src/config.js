@@ -55,6 +55,11 @@ export const config = {
 
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),
+  paperSize: str(env.PAPER_SIZE, "Letter"),
+  printBackground: bool(env.PRINT_BACKGROUND, true),
+  headerFooter: bool(env.PRINT_HEADER_FOOTER, true),
+  printMargin: str(env.PRINT_MARGIN, "default"),
+  printScale: num(env.PRINT_SCALE, 1),
   printMode: str(env.PRINT_MODE, "auto").toLowerCase(),
   printerName: str(env.PRINTER_NAME, ""),
   sumatraPath: str(env.SUMATRA_PATH, ""),
