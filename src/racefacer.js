@@ -95,6 +95,7 @@ export function buildPrintUrl(sd, rowUuid) {
   if (!tpl) return "";
   const vals = {
     uuid: sd?.uuid || rowUuid || "",
+    id: sd?.id ?? "", // id numerique du heat, utilise par la page print-results
     race_uuid: sd?.race_uuid || "",
     race_stage_id: sd?.race_stage_id ?? "",
     race_id: sd?.race_id ?? "",
