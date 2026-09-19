@@ -62,6 +62,8 @@ export const config = {
   printBacklogOnStart: bool(env.PRINT_BACKLOG_ON_START, false),
   // Intervalle du message "veille OK" dans les logs (secondes). 0 = desactive.
   heartbeatSeconds: num(env.HEARTBEAT_SECONDS, 300),
+  // Niveau de log : "error" (defaut, seulement les erreurs) ou "info".
+  logLevel: str(env.LOG_LEVEL, "error").toLowerCase(),
 
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),

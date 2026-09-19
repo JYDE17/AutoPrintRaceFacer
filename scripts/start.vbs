@@ -12,4 +12,6 @@ logFile = fso.BuildPath(logDir, "service.log")
 Set sh = CreateObject("WScript.Shell")
 sh.CurrentDirectory = projectDir
 ' Fenetre cachee (0), on attend la fin (True) -> restart-on-failure possible.
-sh.Run "cmd /c node src\index.js >> """ & logFile & """ 2>&1", 0, True
+' ">" (et non ">>") : le log est REMIS A ZERO a chaque demarrage -> le fichier
+' ne grossit pas indefiniment sur le disque.
+sh.Run "cmd /c node src\index.js > """ & logFile & """ 2>&1", 0, True

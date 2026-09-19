@@ -19,8 +19,20 @@ import { loadState, alreadyPrinted, markPrinted } from "./store.js";
 
 const ONCE = process.argv.includes("--once");
 
+// Niveau de log : "error" (defaut) = seulement les erreurs (peu d'ecriture disque).
+//                 "info"           = erreurs + impressions + veille + demarrage.
+const INFO = config.logLevel === "info" || config.logLevel === "debug";
+
+function stamp() {
+  return new Date().toLocaleTimeString("fr-CA", { hour12: false });
+}
+// Toujours ecrit (erreurs).
+function logErr(...a) {
+  console.log(stamp(), ...a);
+}
+// Ecrit seulement en LOG_LEVEL=info.
 function log(...a) {
-  console.log(new Date().toLocaleTimeString("fr-CA", { hour12: false }), ...a);
+  if (INFO) console.log(stamp(), ...a);
 }
 
 function matchFilters(row, sd) {
@@ -125,7 +137,7 @@ async function tick() {
     try {
       await handleHeat(row);
     } catch (e) {
-      log(`[err] heat ${row.uuid}: ${e.message}`);
+      logErr(`[err] heat ${row.uuid}: ${e.message}`);
     }
   }
 }
@@ -161,7 +173,7 @@ async function main() {
     try {
       await tick();
     } catch (e) {
-      log(`[err] tick: ${e.message}`);
+      logErr(`[err] tick: ${e.message}`);
     }
     await new Promise((r) => setTimeout(r, config.pollIntervalSeconds * 1000));
   }
