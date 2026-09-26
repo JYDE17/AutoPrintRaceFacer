@@ -65,6 +65,18 @@ export const config = {
   // Niveau de log : "error" (defaut, seulement les erreurs) ou "info".
   logLevel: str(env.LOG_LEVEL, "error").toLowerCase(),
 
+  // --- Notifications vers les autres POS ---
+  // Sur POS4 : demarre le serveur de notifications integre au service.
+  alertServerEnabled: bool(env.ALERT_SERVER_ENABLED, true),
+  alertServerPort: num(env.ALERT_SERVER_PORT, 8787),
+  // Envoyer une notif "resultats prets" a chaque impression.
+  notifyOnPrint: bool(env.NOTIFY_ON_PRINT, true),
+  // Sur les autres POS (agent notifier) et pour la commande `alert` :
+  // URL du serveur de POS4, ex. http://192.168.1.50:8787
+  pos4Url: str(env.POS4_URL, "").replace(/\/+$/, ""),
+  // Nom affiche dans les toasts.
+  appName: str(env.APP_NAME, "Goplex - Resultats"),
+
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),
   paperSize: str(env.PAPER_SIZE, "Letter"),

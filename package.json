@@ -11,10 +11,16 @@
     "discover": "node src/discover.js",
     "test-print": "node src/test-print.js",
     "test-detect": "node src/test-detect.js",
+    "notifier": "node src/notifier.js",
+    "alert": "node src/send-alert.js",
     "service:install": "powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1",
     "service:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-task.ps1",
     "service:start": "powershell -Command \"Start-ScheduledTask -TaskName AutoPrintRaceFacer\"",
-    "service:stop": "powershell -Command \"Stop-ScheduledTask -TaskName AutoPrintRaceFacer\""
+    "service:stop": "powershell -Command \"Stop-ScheduledTask -TaskName AutoPrintRaceFacer\"",
+    "notifier:install": "powershell -ExecutionPolicy Bypass -File scripts/install-notifier.ps1",
+    "notifier:uninstall": "powershell -ExecutionPolicy Bypass -File scripts/uninstall-notifier.ps1",
+    "notifier:start": "powershell -Command \"Start-ScheduledTask -TaskName AutoPrintRaceFacerNotifier\"",
+    "notifier:stop": "powershell -Command \"Stop-ScheduledTask -TaskName AutoPrintRaceFacerNotifier\""
   },
   "engines": {
     "node": ">=18"

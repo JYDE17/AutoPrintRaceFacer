@@ -155,6 +155,46 @@ système ne voit pas l'imprimante par défaut de l'utilisateur).
 
 ---
 
+## Notifications vers les autres POS
+
+POS4 (celui qui imprime) peut **notifier tous les autres POS en même temps** —
+quand des résultats sont prêts, ou pour n'importe quelle **alerte que tu envoies
+à la main**. Chaque autre POS affiche un **toast Windows 11**.
+
+**Architecture** : POS4 fait tourner un petit serveur de notifications (intégré
+au service). Chaque autre POS fait tourner un agent léger (`notifier`) qui s'y
+connecte et affiche les toasts. Livraison temps réel, reconnexion automatique.
+
+### Sur POS4 (rien à faire de plus)
+Le serveur démarre avec le service (`ALERT_SERVER_ENABLED=true`). À chaque
+impression, une notif « Résultats prêts » part vers tous les POS
+(`NOTIFY_ON_PRINT=true`).
+
+### Sur chaque autre POS (client)
+1. Installe le projet (`git clone` + `npm install`).
+2. Dans `.env`, mets l'URL de POS4 (son IPv4 via `ipconfig` sur POS4) :
+   ```
+   POS4_URL=http://192.168.1.50:8787
+   ```
+3. Installe l'agent (démarrage auto, arrière-plan) :
+   ```powershell
+   npm run notifier:install
+   npm run notifier:start
+   ```
+
+### Envoyer une alerte à tous les POS (à la main)
+Depuis POS4 (ou n'importe quelle machine avec `POS4_URL` renseigné) :
+```powershell
+npm run alert -- "Pause" "Retour dans 15 minutes"
+npm run alert -- "Nettoyage piste"                 # titre par defaut
+npm run alert -- --type=urgence "URGENCE" "Evacuation piste 1"
+```
+Tous les POS connectés affichent le toast instantanément.
+
+> Le port (8787 par défaut) doit être autorisé sur le pare-feu de POS4 pour le
+> réseau local. Si les POS ne reçoivent rien, ouvre le port `ALERT_SERVER_PORT`
+> dans le pare-feu Windows de POS4 (profil Privé).
+
 ## Structure
 
 ```
@@ -168,4 +208,10 @@ src/
   login.js       Connexion manuelle (fallback / 2FA)
   discover.js    Aide à trouver RF_PRINT_URL
   test-print.js  Impression manuelle d'une course
+  test-detect.js Diagnostic : ce que le service voit dans le calendrier
+  notifier.js    Agent sur les autres POS : recoit et affiche les toasts
+  send-alert.js  Envoie une alerte custom a tous les POS
+  alerts/
+    server.js    Serveur de notifications (sur POS4)
+    notify.js    Toast Windows 11 (PowerShell natif)
 ```

@@ -16,6 +16,7 @@ import {
 import { renderPrintUrlToPdf, closeBrowser } from "./browser.js";
 import { printPdf } from "./printer.js";
 import { loadState, alreadyPrinted, markPrinted } from "./store.js";
+import { startAlertServer, broadcastAlert } from "./alerts/server.js";
 
 const ONCE = process.argv.includes("--once");
 
@@ -88,6 +89,15 @@ async function handleHeat(row) {
   const res = await printPdf(outPath);
   markPrinted(uuid, { label: sd.label, file: outPath, mode: res.mode });
   log(`[ok] ${res.printed ? `imprime (${res.mode})` : "PDF genere (mode none)"} : ${outPath}`);
+
+  // Notifie tous les POS que les resultats sont prets.
+  if (config.notifyOnPrint && config.alertServerEnabled) {
+    broadcastAlert({
+      type: "results",
+      title: "Resultats prets",
+      body: sd.label || "Nouvelle course terminee",
+    });
+  }
 }
 
 let firstTick = true;
@@ -154,6 +164,11 @@ async function main() {
       `poll=${config.pollIntervalSeconds}s, mode impression=${config.printMode}` +
       (ONCE ? " (un seul passage)" : ""),
   );
+
+  // Serveur de notifications (POS4) : les autres POS s'y connectent.
+  if (config.alertServerEnabled && !ONCE) {
+    startAlertServer(config.alertServerPort, (m) => log(m));
+  }
 
   const shutdown = async () => {
     await closeBrowser();
