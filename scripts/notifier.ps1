@@ -8,35 +8,47 @@
 param(
   [string]$Server = "http://10.56.10.226:8787",
   [string]$AppName = "Goplex - Resultats",
-  [string]$Duration = "long"   # court | long | persistant
+  [string]$Duration = "long",    # court | long | persistant
+  [string]$Method = "balloon"    # balloon (bas-droite) | msgbox (boite modale)
 )
 
 Add-Type -AssemblyName System.Net.Http | Out-Null
 
-function Convert-Xml([string]$s) {
-  if ($null -eq $s) { return "" }
-  return ($s -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;')
-}
+$script:notifyIcon = $null
 
+# Notification en bas a droite via NotifyIcon (fiable depuis un process cache,
+# aucune app a enregistrer). Repli sur msg.exe si Method=msgbox.
 function Show-Toast([string]$title, [string]$body) {
-  try {
-    [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-    [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
-
-    $attrs = ' duration="long"'
-    $actions = ''
-    if ($Duration -eq 'court' -or $Duration -eq 'short') { $attrs = '' }
-    elseif ($Duration -eq 'persistant' -or $Duration -eq 'persistent') {
-      $attrs = ' scenario="reminder"'
-      $actions = '<actions><action content="Fermer" arguments="dismiss" activationType="system"/></actions>'
+  if ($Method -eq 'msgbox') {
+    try {
+      $txt = if ($body) { "$title`n$body" } else { $title }
+      Start-Process -FilePath "msg" -ArgumentList '*', '/TIME:60', $txt -WindowStyle Hidden
     }
+    catch { }
+    return
+  }
 
-    $xml = "<toast$attrs><visual><binding template=""ToastGeneric""><text>$(Convert-Xml $AppName)</text><text>$(Convert-Xml $title)</text><text>$(Convert-Xml $body)</text></binding></visual>$actions</toast>"
-    $doc = [Windows.Data.Xml.Dom.XmlDocument]::new()
-    $doc.LoadXml($xml)
-    $toast = [Windows.UI.Notifications.ToastNotification]::new($doc)
-    $appId = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
-    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appId).Show($toast)
+  try {
+    if ($null -eq $script:notifyIcon) {
+      Add-Type -AssemblyName System.Windows.Forms | Out-Null
+      Add-Type -AssemblyName System.Drawing | Out-Null
+      $script:notifyIcon = New-Object System.Windows.Forms.NotifyIcon
+      $script:notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+      $script:notifyIcon.Visible = $true
+    }
+    $ms = 10000
+    if ($Duration -eq 'court' -or $Duration -eq 'short') { $ms = 5000 }
+    elseif ($Duration -eq 'persistant' -or $Duration -eq 'persistent') { $ms = 30000 }
+
+    $script:notifyIcon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
+    $script:notifyIcon.BalloonTipTitle = if ($title) { $title } else { $AppName }
+    $script:notifyIcon.BalloonTipText = if ($body) { $body } else { " " }
+    $script:notifyIcon.ShowBalloonTip($ms)
+    # Petite pompe de messages pour que la bulle s'affiche depuis un process sans UI.
+    for ($i = 0; $i -lt 10; $i++) {
+      [System.Windows.Forms.Application]::DoEvents()
+      Start-Sleep -Milliseconds 40
+    }
   }
   catch { }
 }

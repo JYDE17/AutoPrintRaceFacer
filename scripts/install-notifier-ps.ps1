@@ -8,7 +8,8 @@
 param(
   [string]$Server = "http://10.56.10.226:8787",
   [string]$Duration = "long",
-  [string]$AppName = "Goplex - Resultats"
+  [string]$AppName = "Goplex - Resultats",
+  [string]$Method = "balloon"   # balloon (bas-droite) | msgbox
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,7 +18,7 @@ $ps1 = Join-Path $PSScriptRoot "notifier.ps1"
 if (-not (Test-Path $ps1)) { throw "Introuvable : $ps1" }
 
 $argline = "-ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File `"$ps1`" " +
-  "-Server `"$Server`" -Duration `"$Duration`" -AppName `"$AppName`""
+  "-Server `"$Server`" -Duration `"$Duration`" -AppName `"$AppName`" -Method `"$Method`""
 
 $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argline
 $trigger = New-ScheduledTaskTrigger -AtLogOn
