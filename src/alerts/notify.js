@@ -30,12 +30,27 @@ export function showToast(title, body) {
     console.log(`[toast] ${title} — ${body}`);
     return Promise.resolve();
   }
+  // Duree d'affichage.
+  const d = config.toastDuration;
+  let toastAttrs = ' duration="long"';
+  let actions = "";
+  if (d === "court" || d === "short") {
+    toastAttrs = "";
+  } else if (d === "persistant" || d === "persistent") {
+    // scenario=reminder : le toast reste a l'ecran jusqu'a interaction.
+    toastAttrs = ' scenario="reminder"';
+    actions =
+      "<actions>" +
+      '<action content="Fermer" arguments="dismiss" activationType="system"/>' +
+      "</actions>";
+  }
+
   const xml =
-    `<toast><visual><binding template="ToastGeneric">` +
+    `<toast${toastAttrs}><visual><binding template="ToastGeneric">` +
     `<text>${xmlEscape(config.appName)}</text>` +
     `<text>${xmlEscape(title)}</text>` +
     `<text>${xmlEscape(body)}</text>` +
-    `</binding></visual></toast>`;
+    `</binding></visual>${actions}</toast>`;
 
   return new Promise((resolve) => {
     const p = spawn("powershell", ["-NoProfile", "-NonInteractive", "-Command", PS], {

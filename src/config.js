@@ -76,6 +76,9 @@ export const config = {
   pos4Url: str(env.POS4_URL, "").replace(/\/+$/, ""),
   // Nom affiche dans les toasts.
   appName: str(env.APP_NAME, "Goplex - Resultats"),
+  // Duree d'affichage du toast : "court" (~5s), "long" (~25s) ou
+  // "persistant" (reste a l'ecran jusqu'a ce qu'on clique Fermer).
+  toastDuration: str(env.TOAST_DURATION, "long").toLowerCase(),
 
   // Chromium / impression.
   chromePath: str(env.CHROME_PATH, ""),
