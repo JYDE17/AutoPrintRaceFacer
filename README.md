@@ -171,16 +171,20 @@ impression, une notif « Résultats prêts » part vers tous les POS
 (`NOTIFY_ON_PRINT=true`).
 
 ### Sur chaque autre POS (client)
-1. Installe le projet (`git clone` + `npm install`).
-2. Dans `.env`, mets l'URL de POS4 (son IPv4 via `ipconfig` sur POS4) :
-   ```
-   POS4_URL=http://192.168.1.50:8787
-   ```
-3. Installe l'agent (démarrage auto, arrière-plan) :
-   ```powershell
-   npm run notifier:install
-   npm run notifier:start
-   ```
+
+**Option 1 — sans Node (recommandé, agent 100 % PowerShell)**
+Aucun Node/npm/git requis. Copie juste le fichier `scripts\notifier.ps1` sur le
+POS (clé USB, partage réseau, OneDrive...), puis dans un PowerShell :
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-notifier-ps.ps1 -Server http://10.56.10.226:8787
+```
+(options : `-Duration long|court|persistant`, `-AppName "..."`.)
+Copie `install-notifier-ps.ps1` **et** `notifier.ps1` dans le même dossier.
+
+**Option 2 — avec Node** (si le POS a déjà Node)
+1. `git clone` + `npm install`.
+2. Dans `.env` : `POS4_URL=http://10.56.10.226:8787`
+3. `npm run notifier:install` puis `npm run notifier:start`
 
 ### Envoyer une alerte à tous les POS (à la main)
 Depuis POS4 (ou n'importe quelle machine avec `POS4_URL` renseigné) :
