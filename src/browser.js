@@ -3,14 +3,29 @@
 // (`npm run login`). Le service reutilise ce profil : plus aucun cookie a copier.
 // Tout passe par ce navigateur : le fetch des JSON (schedule/detail) ET le
 // rendu de la page d'impression -> les cookies de session partent automatiquement.
+import fs from "node:fs";
 import puppeteer from "puppeteer-core";
 import { config } from "./config.js";
 import { findChrome } from "./chrome.js";
 
 let browserPromise = null;
 
+// Supprime les verrous de profil laisses par un arret brutal de Chrome
+// (sinon le prochain lancement echoue "profile in use"). Sans danger quand
+// aucun Chrome n'utilise reellement ce profil.
+function clearProfileLocks() {
+  for (const name of ["SingletonLock", "SingletonCookie", "SingletonSocket"]) {
+    try {
+      fs.rmSync(`${config.profileDir}/${name}`, { force: true });
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 async function launch(headless) {
   const executablePath = findChrome();
+  clearProfileLocks();
   try {
     return await puppeteer.launch({
       executablePath,
@@ -39,7 +54,23 @@ async function launch(headless) {
 }
 
 async function getBrowser() {
-  if (!browserPromise) browserPromise = launch(true);
+  // Si un lancement a echoue, on NE garde PAS la promesse en echec :
+  // on remet a zero pour reessayer au prochain appel (auto-reparation).
+  if (!browserPromise) {
+    browserPromise = (async () => {
+      const b = await launch(true);
+      // Si Chrome se deconnecte/plante, on reinitialise pour relancer ensuite.
+      b.on("disconnected", () => {
+        browserPromise = null;
+        apiPage = null;
+      });
+      return b;
+    })().catch((e) => {
+      browserPromise = null;
+      apiPage = null;
+      throw e;
+    });
+  }
   return browserPromise;
 }
 
