@@ -15,12 +15,13 @@ param(
 $ErrorActionPreference = "Stop"
 $TaskName = "AutoPrintRaceFacerNotifier"
 $ps1 = Join-Path $PSScriptRoot "notifier.ps1"
+$vbs = Join-Path $PSScriptRoot "notifier-ps.vbs"
 if (-not (Test-Path $ps1)) { throw "Introuvable : $ps1" }
+if (-not (Test-Path $vbs)) { throw "Introuvable : $vbs" }
 
-$argline = "-ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File `"$ps1`" " +
-  "-Server `"$Server`" -Duration `"$Duration`" -AppName `"$AppName`" -Method `"$Method`""
-
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argline
+# Lancement via un wrapper VBS invisible -> AUCUNE fenetre PowerShell.
+$argline = "`"$vbs`" `"$Server`" `"$Method`" `"$Duration`" `"$AppName`""
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $argline
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 $settings = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries `
