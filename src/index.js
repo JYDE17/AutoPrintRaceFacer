@@ -92,11 +92,11 @@ async function handleHeat(row) {
 
   // Notifie tous les POS que les resultats sont prets.
   if (config.notifyOnPrint && config.alertServerEnabled) {
-    broadcastAlert({
-      type: "results",
-      title: "Resultats prets",
-      body: sd.label || "Nouvelle course terminee",
-    });
+    // Nom de la course (sans le suffixe "- N driver(s)").
+    const raceName = (sd.race_label || "").replace(/\s*-\s*\d+\s*driver\(s\).*$/i, "").trim();
+    const heat = sd.label || "Course terminee";
+    const body = raceName ? `${raceName} - ${heat}` : heat;
+    broadcastAlert({ type: "results", title: "Resultats prets", body });
   }
 }
 
