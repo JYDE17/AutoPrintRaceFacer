@@ -137,16 +137,17 @@ function fireOnce(key, title, body) {
 function checkAnomalies(schedule) {
   if (!(config.notifyAnomalies && config.alertServerEnabled)) return;
   const active = new Set();
-  const runningRaces = schedule.filter((r) => isRaceHeat(r) && isRunning(r));
+  // En cours = courses (race_heat) ET sessions normales confondues.
+  const running = schedule.filter(isRunning);
 
-  // 1) 2+ courses en cours en meme temps (uniquement les vraies courses).
-  if (runningRaces.length >= 2) {
+  // 1) 2+ courses en cours en meme temps (ex: un heat bloque + une session).
+  if (running.length >= 2) {
     const key = "multi_race";
     active.add(key);
     fireOnce(
       key,
-      `Anomalie : ${runningRaces.length} courses en meme temps`,
-      runningRaces.map(heatName).join("  +  "),
+      `Anomalie : ${running.length} courses en meme temps`,
+      running.map(heatName).join("  +  "),
     );
   }
 
@@ -163,14 +164,14 @@ function checkAnomalies(schedule) {
       active.add(key);
       fireOnce(key, "Anomalie : course surbookee", `${heatName(r)} (${pc}/${max})`);
     }
-    // 3) Course demarree sans participants (courses uniquement).
-    if (isRaceHeat(r) && runningNow && pc === 0) {
+    // 3) Course/session demarree sans participants.
+    if (runningNow && pc === 0) {
       const key = `empty:${uuid}`;
       active.add(key);
       fireOnce(key, "Anomalie : course sans participant", heatName(r));
     }
-    // 4) Heat bloque "en cours" trop longtemps (courses uniquement).
-    if (isRaceHeat(r) && runningNow) {
+    // 4) Course/session bloquee "en cours" trop longtemps.
+    if (runningNow) {
       const mins = minutesSince(r.start_time_key);
       if (mins >= config.anomalyStuckMinutes) {
         const key = `stuck:${uuid}`;
