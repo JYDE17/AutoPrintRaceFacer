@@ -132,24 +132,26 @@ function fireOnce(key, title, body) {
   logErr(`[anomalie] ${title} — ${body}`);
 }
 
-// Surveille les anomalies et notifie.
-function checkAnomalies(allHeats) {
+// Surveille les anomalies et notifie. `schedule` = tout le calendrier
+// (sessions + courses), car certaines anomalies (surbook...) touchent les sessions.
+function checkAnomalies(schedule) {
   if (!(config.notifyAnomalies && config.alertServerEnabled)) return;
   const active = new Set();
-  const running = allHeats.filter(isRunning);
+  const runningRaces = schedule.filter((r) => isRaceHeat(r) && isRunning(r));
 
-  // 1) 2+ courses en cours en meme temps.
-  if (running.length >= 2) {
+  // 1) 2+ courses en cours en meme temps (uniquement les vraies courses).
+  if (runningRaces.length >= 2) {
     const key = "multi_race";
     active.add(key);
     fireOnce(
       key,
-      `Anomalie : ${running.length} courses en meme temps`,
-      running.map(heatName).join("  +  "),
+      `Anomalie : ${runningRaces.length} courses en meme temps`,
+      runningRaces.map(heatName).join("  +  "),
     );
   }
 
-  for (const r of allHeats) {
+  // 2 a 5 : sur tout le calendrier (sessions ET courses).
+  for (const r of schedule) {
     const uuid = r.uuid || heatName(r);
     const pc = Number(r.participants_count ?? 0);
     const max = Number(r.max_participants ?? 0);
@@ -161,14 +163,14 @@ function checkAnomalies(allHeats) {
       active.add(key);
       fireOnce(key, "Anomalie : course surbookee", `${heatName(r)} (${pc}/${max})`);
     }
-    // 3) Course demarree sans participants.
-    if (runningNow && pc === 0) {
+    // 3) Course demarree sans participants (courses uniquement).
+    if (isRaceHeat(r) && runningNow && pc === 0) {
       const key = `empty:${uuid}`;
       active.add(key);
       fireOnce(key, "Anomalie : course sans participant", heatName(r));
     }
-    // 4) Heat bloque "en cours" trop longtemps.
-    if (runningNow) {
+    // 4) Heat bloque "en cours" trop longtemps (courses uniquement).
+    if (isRaceHeat(r) && runningNow) {
       const mins = minutesSince(r.start_time_key);
       if (mins >= config.anomalyStuckMinutes) {
         const key = `stuck:${uuid}`;
@@ -199,7 +201,7 @@ async function tick() {
   const allHeats = schedule.filter((r) => isRaceHeat(r));
   const heats = allHeats.filter((r) => isFinished(r));
 
-  checkAnomalies(allHeats);
+  checkAnomalies(schedule);
 
   // Battement de coeur : confirme que la lecture du calendrier fonctionne,
   // sans noyer le log (une ligne toutes les HEARTBEAT_SECONDS).
