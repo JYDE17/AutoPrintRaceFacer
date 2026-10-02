@@ -102,12 +102,42 @@ async function handleHeat(row) {
 
 let firstTick = true;
 let lastBeat = 0;
+let multiRaceActive = false; // anti-spam pour l'alerte "2 courses en meme temps"
+
+// Une course est-elle en cours ? (ni terminee, ni a venir)
+function isRunning(row) {
+  const s = String(row?.status || "").toLowerCase();
+  if (["finished", "not_started", "cancelled", "canceled", "scheduled"].includes(s)) return false;
+  return /in[_ ]?progress|active|running|started|ongoing|green|live/.test(s);
+}
+
+// Surveille les anomalies et notifie (avec anti-spam).
+function checkAnomalies(allHeats) {
+  if (!(config.notifyMultiRace && config.alertServerEnabled)) return;
+  const running = allHeats.filter(isRunning);
+  if (running.length >= 2) {
+    if (!multiRaceActive) {
+      multiRaceActive = true;
+      const noms = running.map((r) => r.label || r.race_label || "course").join("  +  ");
+      broadcastAlert({
+        type: "anomaly",
+        title: `Anomalie : ${running.length} courses en meme temps`,
+        body: noms,
+      });
+      logErr(`[anomalie] ${running.length} courses en cours en meme temps : ${noms}`);
+    }
+  } else {
+    multiRaceActive = false; // etat revenu a la normale -> re-armable
+  }
+}
 
 async function tick() {
   const date = config.date === "today" || !config.date ? todayLocal() : config.date;
   const schedule = await getSchedule(date);
   const allHeats = schedule.filter((r) => isRaceHeat(r));
   const heats = allHeats.filter((r) => isFinished(r));
+
+  checkAnomalies(allHeats);
 
   // Battement de coeur : confirme que la lecture du calendrier fonctionne,
   // sans noyer le log (une ligne toutes les HEARTBEAT_SECONDS).
