@@ -102,7 +102,6 @@ async function handleHeat(row) {
 
 let firstTick = true;
 let lastBeat = 0;
-let multiRaceActive = false; // anti-spam pour l'alerte "2 courses en meme temps"
 
 // Une course est-elle en cours ? (ni terminee, ni a venir)
 function isRunning(row) {
@@ -111,24 +110,87 @@ function isRunning(row) {
   return /in[_ ]?progress|active|running|started|ongoing|green|live/.test(s);
 }
 
-// Surveille les anomalies et notifie (avec anti-spam).
+function heatName(r) {
+  return r.label || r.race_label || "course";
+}
+
+// Age (minutes) depuis l'heure prevue "YYYY-MM-DD HH:MM:SS".
+function minutesSince(startKey) {
+  if (!startKey) return 0;
+  const d = new Date(String(startKey).replace(" ", "T"));
+  if (isNaN(d)) return 0;
+  return (Date.now() - d.getTime()) / 60000;
+}
+
+// Anti-spam : chaque anomalie (par course) n'est notifiee qu'une fois, puis
+// re-armee quand la condition disparait.
+const firedAnomalies = new Set();
+function fireOnce(key, title, body) {
+  if (firedAnomalies.has(key)) return;
+  firedAnomalies.add(key);
+  broadcastAlert({ type: "anomaly", title, body });
+  logErr(`[anomalie] ${title} — ${body}`);
+}
+
+// Surveille les anomalies et notifie.
 function checkAnomalies(allHeats) {
-  if (!(config.notifyMultiRace && config.alertServerEnabled)) return;
+  if (!(config.notifyAnomalies && config.alertServerEnabled)) return;
+  const active = new Set();
   const running = allHeats.filter(isRunning);
+
+  // 1) 2+ courses en cours en meme temps.
   if (running.length >= 2) {
-    if (!multiRaceActive) {
-      multiRaceActive = true;
-      const noms = running.map((r) => r.label || r.race_label || "course").join("  +  ");
-      broadcastAlert({
-        type: "anomaly",
-        title: `Anomalie : ${running.length} courses en meme temps`,
-        body: noms,
-      });
-      logErr(`[anomalie] ${running.length} courses en cours en meme temps : ${noms}`);
-    }
-  } else {
-    multiRaceActive = false; // etat revenu a la normale -> re-armable
+    const key = "multi_race";
+    active.add(key);
+    fireOnce(
+      key,
+      `Anomalie : ${running.length} courses en meme temps`,
+      running.map(heatName).join("  +  "),
+    );
   }
+
+  for (const r of allHeats) {
+    const uuid = r.uuid || heatName(r);
+    const pc = Number(r.participants_count ?? 0);
+    const max = Number(r.max_participants ?? 0);
+    const runningNow = isRunning(r);
+
+    // 2) Course surbookee (participants > max).
+    if (max > 0 && pc > max) {
+      const key = `over:${uuid}`;
+      active.add(key);
+      fireOnce(key, "Anomalie : course surbookee", `${heatName(r)} (${pc}/${max})`);
+    }
+    // 3) Course demarree sans participants.
+    if (runningNow && pc === 0) {
+      const key = `empty:${uuid}`;
+      active.add(key);
+      fireOnce(key, "Anomalie : course sans participant", heatName(r));
+    }
+    // 4) Heat bloque "en cours" trop longtemps.
+    if (runningNow) {
+      const mins = minutesSince(r.start_time_key);
+      if (mins >= config.anomalyStuckMinutes) {
+        const key = `stuck:${uuid}`;
+        active.add(key);
+        fireOnce(
+          key,
+          "Anomalie : course bloquee en cours",
+          `${heatName(r)} (depuis ${Math.round(mins)} min)`,
+        );
+      }
+    }
+    // 5) Nombre de redemarrages eleve.
+    const restarts = Number(r.number_of_restarts ?? 0);
+    if (restarts >= config.anomalyMaxRestarts) {
+      const key = `restart:${uuid}`;
+      active.add(key);
+      fireOnce(key, "Anomalie : redemarrages multiples", `${heatName(r)} (${restarts} redemarrages)`);
+    }
+  }
+
+  // Re-arme les anomalies dont la condition a disparu.
+  for (const k of [...firedAnomalies]) if (!active.has(k)) firedAnomalies.delete(k);
 }
 
 async function tick() {

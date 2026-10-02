@@ -71,8 +71,11 @@ export const config = {
   alertServerPort: num(env.ALERT_SERVER_PORT, 8787),
   // Envoyer une notif "resultats prets" a chaque impression.
   notifyOnPrint: bool(env.NOTIFY_ON_PRINT, true),
-  // Alerte si 2+ courses sont en cours en meme temps.
-  notifyMultiRace: bool(env.NOTIFY_MULTI_RACE, true),
+  // Surveillance des anomalies (2+ courses, surbookee, sans participant,
+  // bloquee, redemarrages multiples).
+  notifyAnomalies: bool(env.NOTIFY_ANOMALIES, true),
+  anomalyStuckMinutes: num(env.ANOMALY_STUCK_MINUTES, 20),
+  anomalyMaxRestarts: num(env.ANOMALY_MAX_RESTARTS, 3),
   // Sur les autres POS (agent notifier) et pour la commande `alert` :
   // URL du serveur de POS4, ex. http://192.168.1.50:8787
   pos4Url: str(env.POS4_URL, "").replace(/\/+$/, ""),
