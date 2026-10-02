@@ -196,6 +196,50 @@ function checkAnomalies(schedule) {
   for (const k of [...firedAnomalies]) if (!active.has(k)) firedAnomalies.delete(k);
 }
 
+// Detection "mauvais kart" : pendant une course en cours, un pilote reste a
+// 0 tour alors que les autres tournent -> le kart assigne n'est pas celui qui
+// roule (erreur d'assignation au pit). Necessite le detail du heat.
+const firedKart = new Set();
+async function checkKartMismatch(schedule) {
+  if (!(config.notifyKartMismatch && config.alertServerEnabled)) return;
+  const activeKart = new Set();
+  const runningRaces = schedule.filter((r) => isRaceHeat(r) && isRunning(r));
+
+  for (const row of runningRaces) {
+    let sd;
+    try {
+      sd = await getRaceHeat(row.uuid);
+    } catch {
+      continue;
+    }
+    const runs = sd?.race_heat_runs || [];
+    if (!runs.length) continue;
+    const maxLaps = Math.max(0, ...runs.map((r) => Number(r.total_laps || 0)));
+    if (maxLaps < config.lapsUnderway) continue; // course pas encore vraiment lancee
+
+    for (const run of runs) {
+      if (run.is_disqualified || run.is_dnf) continue;
+      const laps = Number(run.total_laps || 0) + Number(run.lap_records_count || 0);
+      if (laps === 0) {
+        const who = run.race_participant_name || "pilote";
+        const kart = run.kart ?? run.kart_id ?? "?";
+        const key = `nokart:${row.uuid}:${run.race_participant_id || who}`;
+        activeKart.add(key);
+        if (!firedKart.has(key)) {
+          firedKart.add(key);
+          broadcastAlert({
+            type: "anomaly",
+            title: "Mauvais kart ? aucun tour capte",
+            body: `${who} (kart ${kart}) : 0 tour alors que la course roule (leader ${maxLaps} tours)`,
+          });
+          logErr(`[anomalie] kart non capte : ${who} kart ${kart} (heat ${row.uuid})`);
+        }
+      }
+    }
+  }
+  for (const k of [...firedKart]) if (!activeKart.has(k)) firedKart.delete(k);
+}
+
 async function tick() {
   const date = config.date === "today" || !config.date ? todayLocal() : config.date;
   const schedule = await getSchedule(date);
@@ -203,6 +247,7 @@ async function tick() {
   const heats = allHeats.filter((r) => isFinished(r));
 
   checkAnomalies(schedule);
+  await checkKartMismatch(schedule);
 
   // Battement de coeur : confirme que la lecture du calendrier fonctionne,
   // sans noyer le log (une ligne toutes les HEARTBEAT_SECONDS).

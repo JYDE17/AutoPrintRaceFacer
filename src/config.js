@@ -76,6 +76,10 @@ export const config = {
   notifyAnomalies: bool(env.NOTIFY_ANOMALIES, true),
   anomalyStuckMinutes: num(env.ANOMALY_STUCK_MINUTES, 20),
   anomalyMaxRestarts: num(env.ANOMALY_MAX_RESTARTS, 3),
+  // Alerte "mauvais kart" : un pilote a 0 tour capte pendant que la course roule.
+  notifyKartMismatch: bool(env.NOTIFY_KART_MISMATCH, true),
+  // Nb de tours du leader avant de considerer que la course est "lancee".
+  lapsUnderway: num(env.LAPS_UNDERWAY, 3),
   // Sur les autres POS (agent notifier) et pour la commande `alert` :
   // URL du serveur de POS4, ex. http://192.168.1.50:8787
   pos4Url: str(env.POS4_URL, "").replace(/\/+$/, ""),
