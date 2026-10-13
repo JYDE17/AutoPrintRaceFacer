@@ -199,10 +199,22 @@ function checkAnomalies(schedule) {
 // Detection "mauvais kart" : pendant une course en cours, un pilote reste a
 // 0 tour alors que les autres tournent -> le kart assigne n'est pas celui qui
 // roule (erreur d'assignation au pit). Necessite le detail du heat.
+//
+// Anti-faux-positif : le nombre de tours du leader ne dit PAS depuis combien de
+// temps un pilote est a 0. Sur une course rapide le leader boucle ses N tours
+// en quelques secondes, bien avant que le flux de donnees (lu toutes les
+// POLL_INTERVAL_SECONDS) ait remonte le 1er tour des autres karts -> un kart
+// qui roule tres bien apparait a 0 et declenche une fausse alerte. On exige
+// donc que la condition "0 tour" PERSISTE pendant kartMismatchConfirmSeconds
+// avant d'alerter : un vrai mauvais kart reste a 0 indefiniment, un kart en
+// retard de data rattrape en un ou deux cycles.
 const firedKart = new Set();
+const kartZeroSince = new Map(); // key -> timestamp (ms) du 1er passage a 0 tour
 async function checkKartMismatch(schedule) {
   if (!(config.notifyKartMismatch && config.alertServerEnabled)) return;
   const activeKart = new Set();
+  const now = Date.now();
+  const confirmMs = Math.max(0, config.kartMismatchConfirmSeconds) * 1000;
   const runningRaces = schedule.filter((r) => isRaceHeat(r) && isRunning(r));
 
   for (const row of runningRaces) {
@@ -225,19 +237,28 @@ async function checkKartMismatch(schedule) {
         const kart = run.kart ?? run.kart_id ?? "?";
         const key = `nokart:${row.uuid}:${run.race_participant_id || who}`;
         activeKart.add(key);
-        if (!firedKart.has(key)) {
+        // Memorise depuis quand ce pilote est a 0 tour (persiste entre les ticks).
+        if (!kartZeroSince.has(key)) kartZeroSince.set(key, now);
+        const zeroForMs = now - kartZeroSince.get(key);
+        // On n'alerte qu'une fois la condition confirmee dans la duree.
+        if (zeroForMs >= confirmMs && !firedKart.has(key)) {
           firedKart.add(key);
           broadcastAlert({
             type: "anomaly",
             title: "Mauvais kart ? aucun tour capte",
-            body: `${who} (kart ${kart}) : 0 tour alors que la course roule (leader ${maxLaps} tours)`,
+            body: `${who} (kart ${kart}) : 0 tour depuis ${Math.round(
+              zeroForMs / 1000,
+            )}s alors que la course roule (leader ${maxLaps} tours)`,
           });
           logErr(`[anomalie] kart non capte : ${who} kart ${kart} (heat ${row.uuid})`);
         }
       }
     }
   }
+  // La condition a disparu (le pilote a enfin un tour, ou la course est finie) :
+  // on re-arme pour une eventuelle prochaine fois et on oublie l'horodatage.
   for (const k of [...firedKart]) if (!activeKart.has(k)) firedKart.delete(k);
+  for (const k of [...kartZeroSince.keys()]) if (!activeKart.has(k)) kartZeroSince.delete(k);
 }
 
 async function tick() {
