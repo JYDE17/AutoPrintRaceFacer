@@ -83,7 +83,7 @@ export const config = {
   // Duree (s) pendant laquelle un pilote doit rester a 0 tour avant d'alerter.
   // Anti-faux-positif sur les courses rapides ou le flux de donnees est en
   // retard : un vrai mauvais kart reste a 0, un kart en retard de data rattrape.
-  kartMismatchConfirmSeconds: num(env.KART_MISMATCH_CONFIRM_SECONDS, 90),
+  kartMismatchConfirmSeconds: num(env.KART_MISMATCH_CONFIRM_SECONDS, 45),
   // Sur les autres POS (agent notifier) et pour la commande `alert` :
   // URL du serveur de POS4, ex. http://192.168.1.50:8787
   pos4Url: str(env.POS4_URL, "").replace(/\/+$/, ""),
