@@ -178,8 +178,9 @@ function checkAnomalies(schedule) {
     }
     // 3) Course/session demarree sans participants. Faux positif frequent au
     // demarrage (pilotes pas encore badges / data en retard) : on n'alerte que
-    // si la condition tient depuis emptyRaceConfirmSeconds.
-    if (runningNow && pc === 0) {
+    // si la condition tient depuis emptyRaceConfirmSeconds. Desactivable via
+    // NOTIFY_EMPTY_RACE (coupe par defaut).
+    if (config.notifyEmptyRace && runningNow && pc === 0) {
       const key = `empty:${uuid}`;
       active.add(key);
       if (conditionHeldFor(key, config.emptyRaceConfirmSeconds)) {
