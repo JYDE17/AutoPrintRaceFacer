@@ -132,6 +132,18 @@ function fireOnce(key, title, body) {
   logErr(`[anomalie] ${title} — ${body}`);
 }
 
+// Anti-faux-positif pour les conditions instantanees : au demarrage d'une
+// course/session, certains champs (ex. participants_count) lisent 0 un court
+// instant, le temps que les pilotes soient badges / que le flux de donnees
+// remonte. On exige que la condition PERSISTE avant d'alerter. `since` memorise
+// depuis quand chaque cle est dans l'etat suspect (persiste entre les ticks).
+const anomalySince = new Map();
+function conditionHeldFor(key, confirmSeconds) {
+  const now = Date.now();
+  if (!anomalySince.has(key)) anomalySince.set(key, now);
+  return now - anomalySince.get(key) >= Math.max(0, confirmSeconds) * 1000;
+}
+
 // Surveille les anomalies et notifie. `schedule` = tout le calendrier
 // (sessions + courses), car certaines anomalies (surbook...) touchent les sessions.
 function checkAnomalies(schedule) {
@@ -164,11 +176,15 @@ function checkAnomalies(schedule) {
       active.add(key);
       fireOnce(key, "Anomalie : course surbookee", `${heatName(r)} (${pc}/${max})`);
     }
-    // 3) Course/session demarree sans participants.
+    // 3) Course/session demarree sans participants. Faux positif frequent au
+    // demarrage (pilotes pas encore badges / data en retard) : on n'alerte que
+    // si la condition tient depuis emptyRaceConfirmSeconds.
     if (runningNow && pc === 0) {
       const key = `empty:${uuid}`;
       active.add(key);
-      fireOnce(key, "Anomalie : course sans participant", heatName(r));
+      if (conditionHeldFor(key, config.emptyRaceConfirmSeconds)) {
+        fireOnce(key, "Anomalie : course sans participant", heatName(r));
+      }
     }
     // 4) Course/session bloquee "en cours" trop longtemps.
     if (runningNow) {
@@ -194,6 +210,9 @@ function checkAnomalies(schedule) {
 
   // Re-arme les anomalies dont la condition a disparu.
   for (const k of [...firedAnomalies]) if (!active.has(k)) firedAnomalies.delete(k);
+  // Oublie l'horodatage des conditions qui ne sont plus actives (re-arme le
+  // delai de confirmation pour la prochaine fois).
+  for (const k of [...anomalySince.keys()]) if (!active.has(k)) anomalySince.delete(k);
 }
 
 // Detection "mauvais kart" : pendant une course en cours, un pilote reste a

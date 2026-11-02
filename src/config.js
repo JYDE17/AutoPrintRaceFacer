@@ -76,6 +76,10 @@ export const config = {
   notifyAnomalies: bool(env.NOTIFY_ANOMALIES, true),
   anomalyStuckMinutes: num(env.ANOMALY_STUCK_MINUTES, 20),
   anomalyMaxRestarts: num(env.ANOMALY_MAX_RESTARTS, 3),
+  // Duree (s) pendant laquelle une course/session doit rester a 0 participant
+  // avant d'alerter. Anti-faux-positif au demarrage (pilotes pas encore badges
+  // ou data en retard).
+  emptyRaceConfirmSeconds: num(env.EMPTY_RACE_CONFIRM_SECONDS, 60),
   // Alerte "mauvais kart" : un pilote a 0 tour capte pendant que la course roule.
   notifyKartMismatch: bool(env.NOTIFY_KART_MISMATCH, true),
   // Nb de tours du leader avant de considerer que la course est "lancee".
