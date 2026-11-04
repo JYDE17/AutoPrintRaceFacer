@@ -74,6 +74,9 @@ export const config = {
   // Surveillance des anomalies (2+ courses, surbookee, sans participant,
   // bloquee, redemarrages multiples).
   notifyAnomalies: bool(env.NOTIFY_ANOMALIES, true),
+  // Sous-alerte "course sans participant" : desactivee par defaut (trop de faux
+  // positifs). Les autres anomalies restent actives via NOTIFY_ANOMALIES.
+  notifyEmptyRace: bool(env.NOTIFY_EMPTY_RACE, false),
   anomalyStuckMinutes: num(env.ANOMALY_STUCK_MINUTES, 20),
   anomalyMaxRestarts: num(env.ANOMALY_MAX_RESTARTS, 3),
   // Duree (s) pendant laquelle une course/session doit rester a 0 participant
